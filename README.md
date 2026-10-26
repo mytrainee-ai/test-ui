@@ -36,11 +36,11 @@ cp .env.example .env
 
 ```env
 OPENAI_API_KEY=ваш_ключ
-OPENAI_BASE_URL=
+OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_MODEL=gpt-4.1-mini
 ```
 
-Пустой `OPENAI_BASE_URL` означает стандартный адрес OpenAI. Для ProxyAPI:
+В `.env.example` указан стандартный адрес OpenAI. Если оставить `OPENAI_BASE_URL` пустым, приложение также использует этот адрес. Для ProxyAPI:
 
 ```env
 OPENAI_API_KEY=ключ_ProxyAPI
