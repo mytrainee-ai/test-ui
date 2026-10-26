@@ -1,0 +1,14 @@
+.venv/
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+.streamlit/
+tmp/
+temp/
+results/
+outputs/
+*.tmp
+*.log
+math_page.md
+math_page.json
