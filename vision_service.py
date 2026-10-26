@@ -1,7 +1,6 @@
-"""One vision request per recognition click, using the selected API provider."""
+"""One structured vision request per recognition click."""
 
 import base64
-import json
 from dataclasses import dataclass
 from io import BytesIO
 
@@ -74,92 +73,56 @@ def prepare_image(data: bytes) -> bytes:
         raise RecognitionError("Не удалось прочитать изображение. Проверьте файл JPG или PNG.") from exc
 
 
-def _openai_response(client: OpenAI, model: str, image_url: str):
-    response = client.responses.parse(
-        model=model,
-        instructions=INSTRUCTION,
-        input=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "input_text", "text": "Распознай содержимое этой страницы учебника."},
-                    {"type": "input_image", "image_url": image_url, "detail": "high"},
-                ],
-            }
-        ],
-        text_format=RecognitionResult,
-    )
-    if response.output_parsed is None:
-        raise RecognitionError("API не вернул структурированный JSON-ответ.")
-    return response.output_parsed, response.usage
-
-
-def _compatible_response(client: OpenAI, model: str, image_url: str):
-    """Use the common vision Chat Completions shape; validate JSON locally."""
-    schema = json.dumps(RecognitionResult.model_json_schema(), ensure_ascii=False)
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {
-                "role": "system",
-                "content": INSTRUCTION + "\nВерни только JSON-объект без Markdown и пояснений. JSON-схема: " + schema,
-            },
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": "Распознай содержимое этой страницы учебника."},
-                    {"type": "image_url", "image_url": {"url": image_url, "detail": "high"}},
-                ],
-            },
-        ],
-    )
-    if not response.choices or not response.choices[0].message.content:
-        raise RecognitionError("Провайдер не вернул JSON-ответ.")
-    return json.loads(response.choices[0].message.content), response.usage
-
-
 def recognize_page(
-    image_png: bytes, *, filename: str, page_number: int, provider: str,
+    image_png: bytes, *, filename: str, page_number: int,
     api_key: str, model: str, base_url: str = ""
 ) -> tuple[RecognitionResult, Usage]:
-    if provider not in {"openai", "openai_compatible"}:
-        raise RecognitionError("Неизвестный LLM_PROVIDER. Используйте openai или openai_compatible.")
     if not api_key:
-        raise RecognitionError("Не задан LLM_API_KEY. Создайте .env по образцу .env.example.")
+        raise RecognitionError("Не задан OPENAI_API_KEY. Создайте .env по образцу .env.example.")
     if not model:
-        raise RecognitionError("Не задан LLM_MODEL в .env.")
-    if provider == "openai_compatible" and not base_url:
-        raise RecognitionError("Для openai_compatible задайте LLM_BASE_URL в .env.")
+        raise RecognitionError("Не задан OPENAI_MODEL в .env.")
     image_url = "data:image/png;base64," + base64.b64encode(image_png).decode("ascii")
     try:
-        client = OpenAI(api_key=api_key, **({"base_url": base_url} if provider == "openai_compatible" else {}))
-        if provider == "openai":
-            parsed, usage = _openai_response(client, model, image_url)
-        else:
-            parsed, usage = _compatible_response(client, model, image_url)
-        result = validate_result(RecognitionResult.model_validate(parsed))
+        client = OpenAI(api_key=api_key, base_url=base_url or "https://api.openai.com/v1")
+        response = client.responses.parse(
+            model=model,
+            instructions=INSTRUCTION,
+            input=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "input_text", "text": "Распознай содержимое этой страницы учебника."},
+                        {"type": "input_image", "image_url": image_url, "detail": "high"},
+                    ],
+                }
+            ],
+            text_format=RecognitionResult,
+        )
+        if response.output_parsed is None:
+            raise RecognitionError("API не вернул структурированный JSON-ответ.")
+        result = validate_result(RecognitionResult.model_validate(response.output_parsed))
         # Source metadata comes from the local selection, not a model guess.
         result.document.filename = filename
         result.document.page_number = page_number
-        if usage is None:
-            token_usage = Usage(None, None, None)
-        elif provider == "openai_compatible":
-            token_usage = Usage(usage.prompt_tokens, usage.completion_tokens, usage.total_tokens)
-        else:
-            token_usage = Usage(usage.input_tokens, usage.output_tokens, usage.total_tokens)
+        usage = response.usage
+        token_usage = Usage(
+            usage.input_tokens if usage else None,
+            usage.output_tokens if usage else None,
+            usage.total_tokens if usage else None,
+        )
         return result, token_usage
     except RecognitionError:
         raise
     except (AuthenticationError, PermissionDeniedError) as exc:
-        raise RecognitionError("Ошибка авторизации API. Проверьте LLM_API_KEY и доступ к модели.") from exc
+        raise RecognitionError("Ошибка авторизации API. Проверьте OPENAI_API_KEY и доступ к модели.") from exc
     except NotFoundError as exc:
-        raise RecognitionError("Модель недоступна. Проверьте LLM_MODEL, LLM_BASE_URL и доступ вашего ключа.") from exc
+        raise RecognitionError("Модель недоступна. Проверьте OPENAI_MODEL, OPENAI_BASE_URL и доступ вашего ключа.") from exc
     except RateLimitError as exc:
         raise RecognitionError("Превышен лимит API провайдера. Проверьте квоту и повторите запрос позже.") from exc
     except (APIConnectionError, APITimeoutError) as exc:
-        raise RecognitionError("Сетевой запрос к API провайдера не выполнен. Проверьте соединение и LLM_BASE_URL.") from exc
+        raise RecognitionError("Сетевой запрос к API не выполнен. Проверьте соединение и OPENAI_BASE_URL.") from exc
     except BadRequestError as exc:
-        raise RecognitionError("API отклонил запрос. Проверьте LLM_MODEL, адрес API и поддержку изображений.") from exc
+        raise RecognitionError("API отклонил запрос. Проверьте OPENAI_MODEL, адрес API и поддержку изображений и структурированного вывода.") from exc
     except (ValidationError, ValueError) as exc:
         raise RecognitionError("Структурированный ответ модели не соответствует JSON-схеме или порядку элементов.") from exc
     except APIStatusError as exc:

@@ -25,7 +25,7 @@ with st.expander("Как работает распознавание"):
 
 settings = get_settings()
 uploaded = st.file_uploader("Загрузите страницу (JPG, JPEG, PNG или PDF; до 15 МБ)", type=["jpg", "jpeg", "png", "pdf"])
-st.write(f"Провайдер: `{settings.provider}` · модель: `{settings.model or 'не задана'}`")
+st.write(f"Модель: `{settings.model}` · API: `{settings.base_url or 'OpenAI по умолчанию'}`")
 
 image_png = None
 source_key = None
@@ -73,7 +73,6 @@ if clicked and image_png is not None:
                 image_png,
                 filename=uploaded.name,
                 page_number=int(page_number),
-                provider=settings.provider,
                 api_key=settings.api_key,
                 model=settings.model,
                 base_url=settings.base_url,
