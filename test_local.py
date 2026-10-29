@@ -74,6 +74,7 @@ class LocalChecks(unittest.TestCase):
             validate_result(bad)
 
     def test_one_structured_api_call_with_selected_image(self):
+        
         parsed = RecognitionResult.model_validate(SAMPLE)
         response = SimpleNamespace(output_parsed=parsed, usage=SimpleNamespace(input_tokens=10, output_tokens=20, total_tokens=30))
         with patch("vision_service.OpenAI") as client_class:
