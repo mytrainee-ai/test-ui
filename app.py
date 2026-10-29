@@ -6,7 +6,7 @@ from pathlib import Path
 import streamlit as st
 
 from config import get_settings
-from markdown_renderer import render_markdown, save_outputs
+from markdown_renderer import render_markdown
 from pdf_utils import PdfError, page_count, render_page
 from vision_service import MAX_FILE_BYTES, RecognitionError, prepare_image, recognize_page
 
@@ -14,6 +14,7 @@ from vision_service import MAX_FILE_BYTES, RecognitionError, prepare_image, reco
 st.set_page_config(page_title="Math Page Vision Lab", layout="wide")
 st.title("Math Page Vision Lab")
 st.caption("Экспериментальное распознавание страниц учебников математики с помощью Vision LLM")
+st.sidebar.markdown("[Выйти из учётной записи](/auth/logout)")
 
 with st.expander("Как работает распознавание"):
     st.write(
@@ -57,7 +58,6 @@ if st.session_state.get("source_key") != source_key:
     st.session_state.result = None
     st.session_state.usage = None
     st.session_state.recognition_error = None
-    st.session_state.save_error = None
 
 if error:
     st.error(error)
@@ -66,7 +66,6 @@ clicked = st.button("Распознать страницу", disabled=image_png 
 if clicked and image_png is not None:
     st.session_state.result = None
     st.session_state.recognition_error = None
-    st.session_state.save_error = None
     with st.spinner("Распознаём выбранную страницу…"):
         try:
             result, usage = recognize_page(
@@ -79,10 +78,6 @@ if clicked and image_png is not None:
             )
             st.session_state.result = result
             st.session_state.usage = usage
-            try:
-                save_outputs(result, Path(__file__).resolve().parent / "outputs")
-            except OSError:
-                st.session_state.save_error = "Распознавание выполнено, но не удалось записать файлы в папку outputs. Проверьте права доступа."
         except RecognitionError as exc:
             st.session_state.recognition_error = str(exc)
 
@@ -98,8 +93,6 @@ with right:
     st.subheader("Результат")
     if st.session_state.get("recognition_error"):
         st.error(st.session_state.recognition_error)
-    if st.session_state.get("save_error"):
-        st.error(st.session_state.save_error)
     result = st.session_state.get("result")
     if result is None:
         st.info("Результат появится после нажатия «Распознать страницу».")
@@ -115,7 +108,7 @@ with right:
             st.code(json_text, language="json")
         st.download_button("Скачать Markdown", markdown.encode("utf-8"), "math_page.md", "text/markdown", key="download_md")
         st.download_button("Скачать JSON", json_text.encode("utf-8"), "math_page.json", "application/json", key="download_json")
-        st.caption("Файлы также записаны в папку outputs проекта." if not st.session_state.get("save_error") else "Файлы доступны для скачивания в браузере.")
+        st.caption("Файлы доступны для скачивания в браузере и не сохраняются на сервере.")
         usage = st.session_state.get("usage")
         if usage and usage.total_tokens is not None:
             st.caption(f"Токены: вход {usage.input_tokens}, выход {usage.output_tokens}, всего {usage.total_tokens}")

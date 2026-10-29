@@ -2,8 +2,6 @@
 
 import unittest
 import os
-from pathlib import Path
-from tempfile import TemporaryDirectory
 from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -12,7 +10,7 @@ import pymupdf as fitz
 from PIL import Image
 
 from config import get_settings
-from markdown_renderer import render_markdown, save_outputs
+from markdown_renderer import render_markdown
 from pdf_utils import PdfError, page_count, render_page
 from schemas import RecognitionResult, validate_result
 from vision_service import RecognitionError, prepare_image, recognize_page
@@ -74,14 +72,6 @@ class LocalChecks(unittest.TestCase):
         bad.elements[1].order = 1
         with self.assertRaises(ValueError):
             validate_result(bad)
-
-    def test_outputs_are_utf8_and_match_validated_result(self):
-        result = validate_result(RecognitionResult.model_validate(SAMPLE))
-        with TemporaryDirectory() as folder:
-            markdown_path, json_path = save_outputs(result, Path(folder) / "outputs")
-            self.assertEqual(markdown_path.read_text(encoding="utf-8"), render_markdown(result))
-            self.assertEqual(json_path.read_text(encoding="utf-8"), result.model_dump_json(indent=2))
-            self.assertEqual(json_path.parent.name, "outputs")
 
     def test_one_structured_api_call_with_selected_image(self):
         parsed = RecognitionResult.model_validate(SAMPLE)

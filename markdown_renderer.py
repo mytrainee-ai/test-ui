@@ -1,7 +1,5 @@
 """Deterministic Markdown built only from the validated JSON result."""
 
-from pathlib import Path
-
 from schemas import Element, ElementType, RecognitionResult
 
 
@@ -43,13 +41,3 @@ def _render_element(item: Element) -> str:
 
 def render_markdown(result: RecognitionResult) -> str:
     return "\n\n".join(_render_element(item) for item in result.elements) + "\n"
-
-
-def save_outputs(result: RecognitionResult, directory: Path) -> tuple[Path, Path]:
-    """Write the same JSON and Markdown shown in the UI to the project folder."""
-    directory.mkdir(parents=True, exist_ok=True)
-    markdown_path = directory / "math_page.md"
-    json_path = directory / "math_page.json"
-    markdown_path.write_text(render_markdown(result), encoding="utf-8")
-    json_path.write_text(result.model_dump_json(indent=2), encoding="utf-8")
-    return markdown_path, json_path

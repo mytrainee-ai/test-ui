@@ -12,3 +12,5 @@ outputs/
 *.log
 math_page.md
 math_page.json
+
+ssh_creds.txt
