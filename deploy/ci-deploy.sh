@@ -34,4 +34,32 @@ cd "$release"
 
 if [[ ${2:-} != --prepare-only ]]; then
   sudo /usr/local/sbin/math-page-activate "$revision"
+
+  current=$(readlink -f "$base/current")
+  previous=$(readlink -f "$base/previous" || true)
+  keep=("$current")
+  if [[ -n $previous && $previous != "$current" ]]; then
+    keep+=("$previous")
+  fi
+
+  mapfile -t releases < <(find "$base/releases" -mindepth 1 -maxdepth 1 -type d \
+    -printf '%T@ %p\n' | sort -nr | cut -d' ' -f2-)
+  for candidate in "${releases[@]}"; do
+    [[ $candidate =~ ^/opt/math-page-ci/releases/[0-9a-f]{40}$ ]] || continue
+    preserved=false
+    for selected in "${keep[@]}"; do
+      if [[ $candidate == "$selected" ]]; then
+        preserved=true
+        break
+      fi
+    done
+    if [[ $preserved == true ]]; then
+      continue
+    fi
+    if (( ${#keep[@]} < 3 )); then
+      keep+=("$candidate")
+    elif ! git -C "$repository" worktree remove --force "$candidate"; then
+      echo "Could not remove old release: $candidate" >&2
+    fi
+  done
 fi
