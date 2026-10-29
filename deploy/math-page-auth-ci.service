@@ -1,0 +1,25 @@
+[Unit]
+Description=Math Page Vision Lab authentication service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mathpage
+Group=mathpage
+WorkingDirectory=/opt/math-page-ci/current
+EnvironmentFile=/etc/math-page-auth.env
+Environment=HOME=/var/lib/math-page-auth
+StateDirectory=math-page-auth
+ExecStart=/opt/math-page-ci/current/.venv/bin/python -m uvicorn auth_service:app --host 127.0.0.1 --port 8001 --no-access-log
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/math-page-auth
+
+[Install]
+WantedBy=multi-user.target
