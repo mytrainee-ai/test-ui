@@ -39,7 +39,7 @@ with file_column:
         on_change=_clear_test_image,
     )
 with test_column:
-    if st.button("Тест", use_container_width=True):
+    if st.button("Тест", use_container_width=Trueqqq):
         st.session_state.use_test_image = True
 
 st.write(f"Модель: `{settings.model}` · API: `{settings.base_url or 'OpenAI по умолчанию'}`")
