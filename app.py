@@ -32,14 +32,14 @@ def _clear_test_image() -> None:
 
 
 file_column, test_column = st.columns([5, 1], vertical_alignment="bottom")
-with file_columnqqq:
+with file_column:
     uploaded = st.file_uploader(
         "Выбрать файл (JPG, JPEG, PNG или PDF; до 15 МБ)",
         type=["jpg", "jpeg", "png", "pdf"],
         on_change=_clear_test_image,
     )
 with test_column:
-    if st.button("Тест", use_container_width=Trueqqq):
+    if st.button("Тест", use_container_width=True):
         st.session_state.use_test_image = True
 
 st.write(f"Модель: `{settings.model}` · API: `{settings.base_url or 'OpenAI по умолчанию'}`")
