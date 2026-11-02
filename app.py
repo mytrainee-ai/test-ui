@@ -32,7 +32,7 @@ def _clear_test_image() -> None:
 
 
 file_column, test_column = st.columns([5, 1], vertical_alignment="bottom")
-with file_column:
+with file_columnqqq:
     uploaded = st.file_uploader(
         "Выбрать файл (JPG, JPEG, PNG или PDF; до 15 МБ)",
         type=["jpg", "jpeg", "png", "pdf"],
