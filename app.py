@@ -27,7 +27,7 @@ with st.expander("Как работает распознавание"):
 settings = get_settings()
 
 
-def _clear_test_image() -> None:
+def _clear_test_image()qqqq -> None:
     st.session_state.use_test_image = False
 
 
