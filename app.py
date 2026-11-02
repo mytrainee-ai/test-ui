@@ -25,7 +25,23 @@ with st.expander("Как работает распознавание"):
     )
 
 settings = get_settings()
-uploaded = st.file_uploader("Загрузите страницу (JPG, JPEG, PNG или PDF; до 15 МБ)", type=["jpg", "jpeg", "png", "pdf"])
+
+
+def _clear_test_image() -> None:
+    st.session_state.use_test_image = False
+
+
+file_column, test_column = st.columns([5, 1], vertical_alignment="bottom")
+with file_column:
+    uploaded = st.file_uploader(
+        "Выбрать файл (JPG, JPEG, PNG или PDF; до 15 МБ)",
+        type=["jpg", "jpeg", "png", "pdf"],
+        on_change=_clear_test_image,
+    )
+with test_column:
+    if st.button("Тест", use_container_width=True):
+        st.session_state.use_test_image = True
+
 st.write(f"Модель: `{settings.model}` · API: `{settings.base_url or 'OpenAI по умолчанию'}`")
 
 image_png = None
@@ -33,12 +49,27 @@ source_key = None
 page_number = 1
 error = None
 
-if uploaded is not None:
+test_image_path = Path(__file__).parent / "test_umg" / "page_005.jpg"
+if st.session_state.get("use_test_image"):
+    if test_image_path.is_file():
+        filename = test_image_path.name
+        data = test_image_path.read_bytes()
+    else:
+        filename = "page_005.jpg"
+        data = b""
+        error = "Тестовое изображение не найдено."
+elif uploaded is not None:
+    filename = uploaded.name
     data = uploaded.getvalue()
+else:
+    filename = ""
+    data = b""
+
+if data:
     if len(data) > MAX_FILE_BYTES:
         error = "Файл слишком большой. Максимальный размер — 15 МБ."
     else:
-        extension = Path(uploaded.name).suffix.lower()
+        extension = Path(filename).suffix.lower()
         try:
             if extension == ".pdf":
                 count = page_count(data)
@@ -51,7 +82,7 @@ if uploaded is not None:
         except (PdfError, RecognitionError) as exc:
             error = str(exc)
     if image_png is not None:
-        source_key = hashlib.sha256(data).hexdigest() + f":{page_number}:{uploaded.name}"
+        source_key = hashlib.sha256(data).hexdigest() + f":{page_number}:{filename}"
 
 if st.session_state.get("source_key") != source_key:
     st.session_state.source_key = source_key
@@ -70,7 +101,7 @@ if clicked and image_png is not None:
         try:
             result, usage = recognize_page(
                 image_png,
-                filename=uploaded.name,
+                filename=filename,
                 page_number=int(page_number),
                 api_key=settings.api_key,
                 model=settings.model,
